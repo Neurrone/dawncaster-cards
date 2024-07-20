@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dawncaster Talents</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.0.12/purify.min.js" async></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        nav ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+            display: flex;
+            background-color: #f2f2f2;
+        }
+        nav li {
+            padding: 10px 20px;
+        }
+        nav a {
+            text-decoration: none;
+            color: black;
+        }
+        nav a[aria-current="page"] {
+            font-weight: bold;
+            border-bottom: 2px solid #000;
+        }        
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        #resultsInfo {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        th[scope="row"] {
+            font-weight: bold;
+            background-color: #e9e9e9;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="cards.html">Cards</a></li>
+            <li><a href="#" aria-current="page">Talents</a></li>
+        </ul>
+    </nav>
+    <main>
+        <search class="filters">
+            <select id="tier">
+                <option value="">Talent Tier</option>
+                <option value="0">Tier 0</option>
+                <option value="1">Tier 1</option>
+                <option value="2">Tier 2</option>
+                <option value="3">Tier 3</option>
+                <option value="4">Tier 4</option>
+                <option value="5">Tier 5</option>
+                <option value="6">Tier 6</option>
+            </select>
+            <select id="expansion">
+                <option value="">Expansion</option>
+                <option value="0">None</option>
+                <option value="1">Core</option>
+                <option value="2">Metaprogress</option>
+                <option value="3">Metamorphosis</option>
+                <option value="4">Core Extended</option>
+                <option value="5">Infinitum</option>
+                <option value="6">Catalyst</option>
+            </select>
+        </search>
+        <div role="status" id="resultsInfo"></div>
+        <table id="talentTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Tier</th>
+                    <th>Prerequisites</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table rows will be populated here -->
+            </tbody>
+        </table>
+    </main>
+    <script>
+        const talentTable = document.getElementById('talentTable').getElementsByTagName('tbody')[0];
+        const talentCache = new Map(); // Cache for storing talent details
+
+        const fetchTalents = async () => {
+            const tier = document.getElementById('tier').value;
+            const expansion = document.getElementById('expansion').value;
+            const url = `https://blightbane.io/api/cards?search=&rarity=${tier}&category=10&type=&banner=&exp=${expansion}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`While searching for talents: ${response.status} ${response.body}`);
+                }
+                const data = await response.json();
+                
+                // Fetch detailed info for each talent
+                const talentDetails = await Promise.all(data.cards.map(fetchTalentDetails));
+                
+                updateDOM(talentDetails, data.card_len);
+            } catch (error) {
+                console.error('Error fetching talents:', error);
+                updateDOM([], 0); // Clear the table
+                document.getElementById('resultsInfo').innerHTML = `<p>Error fetching talents: ${error.message}</p>`;
+            }
+        }
+
+        document.querySelectorAll('select').forEach(select => {
+            select.addEventListener('change', fetchTalents);
+        });
+
+        const fetchTalentDetails = async (talent) => {
+            if (talentCache.has(talent.id)) {
+                return talentCache.get(talent.id);
+            } else {
+                const response = await fetch(`https://blightbane.io/api/card/${talent.id}?talent=true`);
+                if (!response.ok) {
+                    throw new Error(`Error while fetching talent details: ${response}`);
+                }
+                const details = await response.json();
+                talentCache.set(talent.id, details);
+                return details;
+            }
+        }
+
+        const updateDOM = (talents, totalTalents) => {
+            const resultsInfo = document.getElementById('resultsInfo');
+            resultsInfo.innerHTML = renderTooManyResultsWarningIfNeeded(talents.length, totalTalents);
+            talentTable.innerHTML = talents.length > 0 ? renderTalents(talents) : '<tr><td colspan="4">No talents found.</td></tr>';
+        }
+
+        const renderTalents = (talents) => {
+            return talents.map(renderTalent).join('');
+        }
+
+        const renderTalent = async (details) => {
+            const prerequisites = await Promise.all((details.prereq || []).map(fetchTalentDetails));
+            const prerequisiteNames = prerequisites.map(p => p.name).join(', ');
+            
+            return `
+                <tr>
+                    <th scope="row">
+                        <a href="https://blightbane.io/talent/${details.name.replace(/ /g, '_')}">
+                            ${details.name}
+                        </a>
+                    </th>
+                    <td>${details.tier}</td>
+                    <td>${prerequisiteNames}</td>
+                    <td>${DOMPurify.sanitize(details.description, {ALLOWED_TAGS: []})}</td>
+                </tr>
+            `;
+        }
+
+        const renderTooManyResultsWarningIfNeeded = (displayedTalents, totalTalents) => {
+            if (displayedTalents < totalTalents) {
+                return `<p>${displayedTalents} talents out of ${totalTalents} displayed. Filter to reduce the number of results.</p>`;
+            }
+            return '';
+        }
+
+        fetchTalents();
+    </script>
+</body>
+</html>
