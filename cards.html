@@ -9,6 +9,26 @@
         body {
             font-family: Arial, sans-serif;
         }
+
+        nav ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+            display: flex;
+            background-color: #f2f2f2;
+        }
+        nav li {
+            padding: 10px 20px;
+        }
+        nav a {
+            text-decoration: none;
+            color: black;
+        }
+        nav a[aria-current="page"] {
+            font-weight: bold;
+            border-bottom: 2px solid #000;
+        }        
+
         .filters {
             display: flex;
             gap: 10px;
@@ -37,87 +57,94 @@
     </style>
 </head>
 <body>
-    <div class="filters">
-        <select id="category">
-            <option value="">Category</option>
-            <option value="0">Action</option>
-            <option value="1">Item</option>
-            <option value="2">Artifact</option>
-            <option value="3">Conjuration</option>
-            <option value="4">Enchantment</option>
-            <option value="5">Basic Attack</option>
-            <option value="6">Summon</option>
-            <option value="7">Performance</option>
-            <option value="8">Form</option>
-            <option value="9">Hymn</option>
-            <option value="11">Revelation</option>
-            <option value="12">Affix</option>
-            <option value="13">Attunement</option>
-            <option value="14">Equipment</option>
-            <option value="15">Code</option>
-        </select>
-        <select id="type">
-            <option value="">Type</option>
-            <option value="0">Melee</option>
-            <option value="1">Magic</option>
-            <option value="2">Ranged</option>
-            <option value="3">Utility</option>
-            <option value="4">Divine</option>
-            <option value="5">Move</option>
-            <option value="6">Corruption</option>
-            <option value="7">Monster</option>
-        </select>
-        <select id="rarity">
-            <option value="">Rarity</option>
-            <option value="0">Common</option>
-            <option value="1">Uncommon</option>
-            <option value="2">Rare</option>
-            <option value="3">Legendary</option>
-            <option value="4">Monster</option>
-        </select>
-        <select id="banner">
-            <option value="">Banner Colour</option>
-            <option value="0">None</option>
-            <option value="1">Green</option>
-            <option value="2">Blue</option>
-            <option value="3">Red</option>
-            <option value="4">Purple</option>
-            <option value="5">Brown</option>
-            <option value="6">Aqua</option>
-            <option value="7">White</option>
-            <option value="8">Gold</option>
-            <option value="9">Black</option>
-            <option value="10">Orange</option>
-            <option value="11">Monster</option>
-        </select>
-        <select id="expansion">
-            <option value="">Expansion</option>
-            <option value="0">None</option>
-            <option value="1">Core</option>
-            <option value="2">Metaprogress</option>
-            <option value="3">Metamorphosis</option>
-            <option value="4">Core Extended</option>
-            <option value="5">Infinitum</option>
-            <option value="6">Catalyst</option>
-        </select>
-    </div>
-    <div role="status" id="resultsInfo"></div>
-    <table id="cardTable">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Type</th>
-                <th>Rarity</th>
-                <th>Cost</th>
-                <th>Description</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Table rows will be populated here -->
-        </tbody>
-    </table>
-
+    <nav>
+        <ul>
+            <li><a href="#" aria-current="page">Cards</a></li>
+            <li><a href="#">Talents</a></li>
+        </ul>
+    </nav>
+    <main>
+        <search class="filters">
+            <select id="category">
+                <option value="">Category</option>
+                <option value="0">Action</option>
+                <option value="1">Item</option>
+                <option value="2">Artifact</option>
+                <option value="3">Conjuration</option>
+                <option value="4">Enchantment</option>
+                <option value="5">Basic Attack</option>
+                <option value="6">Summon</option>
+                <option value="7">Performance</option>
+                <option value="8">Form</option>
+                <option value="9">Hymn</option>
+                <option value="11">Revelation</option>
+                <option value="12">Affix</option>
+                <option value="13">Attunement</option>
+                <option value="14">Equipment</option>
+                <option value="15">Code</option>
+            </select>
+            <select id="type">
+                <option value="">Type</option>
+                <option value="0">Melee</option>
+                <option value="1">Magic</option>
+                <option value="2">Ranged</option>
+                <option value="3">Utility</option>
+                <option value="4">Divine</option>
+                <option value="5">Move</option>
+                <option value="6">Corruption</option>
+                <option value="7">Monster</option>
+            </select>
+            <select id="rarity">
+                <option value="">Rarity</option>
+                <option value="0">Common</option>
+                <option value="1">Uncommon</option>
+                <option value="2">Rare</option>
+                <option value="3">Legendary</option>
+                <option value="4">Monster</option>
+            </select>
+            <select id="banner">
+                <option value="">Banner Colour</option>
+                <option value="0">None</option>
+                <option value="1">Green</option>
+                <option value="2">Blue</option>
+                <option value="3">Red</option>
+                <option value="4">Purple</option>
+                <option value="5">Brown</option>
+                <option value="6">Aqua</option>
+                <option value="7">White</option>
+                <option value="8">Gold</option>
+                <option value="9">Black</option>
+                <option value="10">Orange</option>
+                <option value="11">Monster</option>
+            </select>
+            <select id="expansion">
+                <option value="">Expansion</option>
+                <option value="0">None</option>
+                <option value="1">Core</option>
+                <option value="2">Metaprogress</option>
+                <option value="3">Metamorphosis</option>
+                <option value="4">Core Extended</option>
+                <option value="5">Infinitum</option>
+                <option value="6">Catalyst</option>
+            </select>
+        </search>
+        <div role="status" id="resultsInfo"></div>
+        <table id="cardTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Type</th>
+                    <th>Rarity</th>
+                    <th>Cost</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table rows will be populated here -->
+            </tbody>
+        </table>
+    </main>
     <script>
         const selects = document.querySelectorAll('select');
         const cardTable = document.getElementById('cardTable').getElementsByTagName('tbody')[0];
