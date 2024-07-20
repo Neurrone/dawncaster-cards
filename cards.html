@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dawncaster Cards</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.0.12/purify.min.js" async></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        #resultsInfo {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        th[scope="row"] {
+            font-weight: bold;
+            background-color: #e9e9e9;
+        }
+    </style>
+</head>
+<body>
+    <div class="filters">
+        <select id="category">
+            <option value="">Category</option>
+            <option value="0">Action</option>
+            <option value="1">Item</option>
+            <option value="2">Artifact</option>
+            <option value="3">Conjuration</option>
+            <option value="4">Enchantment</option>
+            <option value="5">Basic Attack</option>
+            <option value="6">Summon</option>
+            <option value="7">Performance</option>
+            <option value="8">Form</option>
+            <option value="9">Hymn</option>
+            <option value="11">Revelation</option>
+            <option value="12">Affix</option>
+            <option value="13">Attunement</option>
+            <option value="14">Equipment</option>
+            <option value="15">Code</option>
+        </select>
+        <select id="type">
+            <option value="">Type</option>
+            <option value="0">Melee</option>
+            <option value="1">Magic</option>
+            <option value="2">Ranged</option>
+            <option value="3">Utility</option>
+            <option value="4">Divine</option>
+            <option value="5">Move</option>
+            <option value="6">Corruption</option>
+            <option value="7">Monster</option>
+        </select>
+        <select id="rarity">
+            <option value="">Rarity</option>
+            <option value="0">Common</option>
+            <option value="1">Uncommon</option>
+            <option value="2">Rare</option>
+            <option value="3">Legendary</option>
+            <option value="4">Monster</option>
+        </select>
+        <select id="banner">
+            <option value="">Banner Colour</option>
+            <option value="0">None</option>
+            <option value="1">Green</option>
+            <option value="2">Blue</option>
+            <option value="3">Red</option>
+            <option value="4">Purple</option>
+            <option value="5">Brown</option>
+            <option value="6">Aqua</option>
+            <option value="7">White</option>
+            <option value="8">Gold</option>
+            <option value="9">Black</option>
+            <option value="10">Orange</option>
+            <option value="11">Monster</option>
+        </select>
+        <select id="expansion">
+            <option value="">Expansion</option>
+            <option value="0">None</option>
+            <option value="1">Core</option>
+            <option value="2">Metaprogress</option>
+            <option value="3">Metamorphosis</option>
+            <option value="4">Core Extended</option>
+            <option value="5">Infinitum</option>
+            <option value="6">Catalyst</option>
+        </select>
+    </div>
+    <div role="status" id="resultsInfo"></div>
+    <table id="cardTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Rarity</th>
+                <th>Cost</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Table rows will be populated here -->
+        </tbody>
+    </table>
+
+    <script>
+        const selects = document.querySelectorAll('select');
+        const cardTable = document.getElementById('cardTable').getElementsByTagName('tbody')[0];
+        const resultsInfo = document.getElementById('resultsInfo');
+        const cardCache = new Map(); // Cache for storing card details
+
+        selects.forEach(select => {
+            select.addEventListener('change', fetchCards);
+        });
+
+        function fetchCards() {
+            const category = document.getElementById('category').value;
+            const type = document.getElementById('type').value;
+            const rarity = document.getElementById('rarity').value;
+            const banner = document.getElementById('banner').value;
+            const expansion = document.getElementById('expansion').value;
+
+            const url = `https://blightbane.io/api/cards?search=&rarity=${rarity}&category=${category}&type=${type}&banner=${banner}&exp=${expansion}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    cardTable.innerHTML = '';
+                    updateResultsInfo(data.cards.length, data.card_len);
+                    data.cards.forEach(card => {
+                        fetchCardDetails(card);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function updateResultsInfo(displayedCards, totalCards) {
+            if (displayedCards < totalCards) {
+                resultsInfo.textContent = `${displayedCards} cards out of ${totalCards} displayed. Filter to reduce the number of results.`;
+            } else {
+                resultsInfo.textContent = '';
+            }
+        }
+
+        function fetchCardDetails(card) {
+            if (cardCache.has(card.id)) {
+                // If card details are in cache, use them
+                displayCardDetails(cardCache.get(card.id));
+            } else {
+                // If not in cache, fetch from API
+                fetch(`https://blightbane.io/api/card/${card.id}`)
+                    .then(response => response.json())
+                    .then(details => {
+                        cardCache.set(card.id, details); // Store in cache
+                        displayCardDetails(details);
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+        }
+
+        function displayCardDetails(details) {
+            const row = cardTable.insertRow();
+            
+            // Create hyperlink for card name
+            const nameCell = row.insertCell(0);
+            nameCell.outerHTML = '<th scope="row"></th>';
+            const nameHeader = row.cells[0]; // Get the newly created th
+            const cardLink = document.createElement('a');
+            cardLink.href = `https://blightbane.io/card/${details.name.replace(/ /g, '_')}`;
+            cardLink.textContent = details.name;
+            cardLink.target = '_blank';
+            nameHeader.appendChild(cardLink);
+
+            row.insertCell(1).textContent = getCategoryName(details.category);
+            row.insertCell(2).textContent = getTypeName(details.type);
+            row.insertCell(3).textContent = getRarityName(details.rarity);
+            row.insertCell(4).textContent = getCostSummary(details.cost);
+            row.insertCell(5).textContent = DOMPurify.sanitize(details.description, {ALLOWED_TAGS: []}); // remove stuff like <b> tags
+        }
+        function getCategoryName(categoryId) {
+            const categories = ["Action", "Item", "Artifact", "Conjuration", "Enchantment", "Basic Attack", "Summon", "Performance", "Form", "Hymn", "Unknown", "Revelation", "Affix", "Attunement", "Equipment", "Code"];
+            return categories[categoryId] || "Unknown";
+        }
+
+        function getTypeName(typeId) {
+            const types = ["Melee", "Magic", "Ranged", "Utility", "Divine", "Corruption", "Monster"];
+            return types[typeId] || "Unknown";
+        }
+
+        function getRarityName(rarityId) {
+            const rarities = ["Common", "Uncommon", "Rare", "Legendary", "Monster"];
+            return rarities[rarityId] || "Unknown";
+        }
+
+        function getCostSummary(cost) {
+            const costItems = [];
+            for (const [key, value] of Object.entries(cost)) {
+                if (value > 0) {
+                    costItems.push(`${key} ${value}`);
+                }
+            }
+            return costItems.join(', ') || 'None';
+        }
+
+        // Initial fetch
+        fetchCards();
+    </script>
+</body>
+</html>
