@@ -146,105 +146,109 @@
         </table>
     </main>
     <script>
-        const selects = document.querySelectorAll('select');
         const cardTable = document.getElementById('cardTable').getElementsByTagName('tbody')[0];
-        const resultsInfo = document.getElementById('resultsInfo');
         const cardCache = new Map(); // Cache for storing card details
 
-        selects.forEach(select => {
-            select.addEventListener('change', fetchCards);
-        });
-
-        function fetchCards() {
+        const fetchCards = async () => {
             const category = document.getElementById('category').value;
             const type = document.getElementById('type').value;
             const rarity = document.getElementById('rarity').value;
             const banner = document.getElementById('banner').value;
             const expansion = document.getElementById('expansion').value;
-
             const url = `https://blightbane.io/api/cards?search=&rarity=${rarity}&category=${category}&type=${type}&banner=${banner}&exp=${expansion}`;
 
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    cardTable.innerHTML = '';
-                    updateResultsInfo(data.cards.length, data.card_len);
-                    data.cards.forEach(card => {
-                        fetchCardDetails(card);
-                    });
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        function updateResultsInfo(displayedCards, totalCards) {
-            if (displayedCards < totalCards) {
-                resultsInfo.textContent = `${displayedCards} cards out of ${totalCards} displayed. Filter to reduce the number of results.`;
-            } else {
-                resultsInfo.textContent = '';
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`While searching for cards: ${response.status} ${response.body}`);
+                }
+                const data = await response.json();
+                
+                // Fetch detailed info for each card
+                const cardDetails = await Promise.all(data.cards.map(fetchCardDetails));
+                
+                updateDOM(cardDetails, data.card_len);
+            } catch (error) {
+                console.error('Error fetching cards:', error);
+                updateDOM([], 0); // Clear the table
+                document.getElementById('resultsInfo').innerHTML = `<p>Error fetching cards: ${error.message}</p>`;
             }
         }
 
-        function fetchCardDetails(card) {
+        document.querySelectorAll('select').forEach(select => {
+            select.addEventListener('change', fetchCards);
+        });
+
+        const fetchCardDetails = async (card) => {
             if (cardCache.has(card.id)) {
-                // If card details are in cache, use them
-                displayCardDetails(cardCache.get(card.id));
+                return cardCache.get(card.id);
             } else {
-                // If not in cache, fetch from API
-                fetch(`https://blightbane.io/api/card/${card.id}`)
-                    .then(response => response.json())
-                    .then(details => {
-                        cardCache.set(card.id, details); // Store in cache
-                        displayCardDetails(details);
-                    })
-                    .catch(error => console.error('Error:', error));
+                const response = await fetch(`https://blightbane.io/api/card/${card.id}`);
+                if (!response.ok) {
+                    throw new Error(`Error while fetching card details: ${response}`);
+                }
+                const details = await response.json();
+                cardCache.set(card.id, details);
+                return details;
             }
         }
 
-        function displayCardDetails(details) {
-            const row = cardTable.insertRow();
-            
-            // Create hyperlink for card name
-            const nameCell = row.insertCell(0);
-            nameCell.outerHTML = '<th scope="row"></th>';
-            const nameHeader = row.cells[0]; // Get the newly created th
-            const cardLink = document.createElement('a');
-            cardLink.href = `https://blightbane.io/card/${details.name.replace(/ /g, '_')}`;
-            cardLink.textContent = details.name;
-            cardLink.target = '_blank';
-            nameHeader.appendChild(cardLink);
-
-            row.insertCell(1).textContent = getCategoryName(details.category);
-            row.insertCell(2).textContent = getTypeName(details.type);
-            row.insertCell(3).textContent = getRarityName(details.rarity);
-            row.insertCell(4).textContent = getCostSummary(details.cost);
-            row.insertCell(5).textContent = DOMPurify.sanitize(details.description, {ALLOWED_TAGS: []}); // remove stuff like <b> tags
+        const updateDOM = (cards, totalCards) => {
+            const resultsInfo = document.getElementById('resultsInfo');
+            resultsInfo.innerHTML = renderTooManyResultsWarningIfNeeded(cards.length, totalCards);
+            cardTable.innerHTML = cards.length > 0 ? renderCards(cards) : '<tr><td colspan="6">No cards found.</td></tr>';
         }
-        function getCategoryName(categoryId) {
-            const categories = ["Action", "Item", "Artifact", "Conjuration", "Enchantment", "Basic Attack", "Summon", "Performance", "Form", "Hymn", "Unknown", "Revelation", "Affix", "Attunement", "Equipment", "Code"];
+
+        const renderCards = (cards) => {
+            return cards.map(renderCard).join('');
+        }
+
+        const renderCard = (details) => {
+            return `
+                <tr>
+                    <th scope="row">
+                        <a href="https://blightbane.io/card/${details.name.replace(/ /g, '_')}">
+                            ${details.name}
+                        </a>
+                    </th>
+                    <td>${getCategoryName(details.category)}</td>
+                    <td>${getTypeName(details.type)}</td>
+                    <td>${getRarityName(details.rarity)}</td>
+                    <td>${getCostSummary(details.cost)}</td>
+                    <td>${DOMPurify.sanitize(details.description, {ALLOWED_TAGS: []})}</td>
+                </tr>
+            `;
+        }
+
+        const renderTooManyResultsWarningIfNeeded = (displayedCards, totalCards) => {
+            if (displayedCards < totalCards) {
+                return `<p>${displayedCards} cards out of ${totalCards} displayed. Filter to reduce the number of results.</p>`;
+            }
+            return '';
+        }
+
+        const getCategoryName = (categoryId) => {
+            const categories = ["Action", "Item", "Artifact", "Conjuration", "Enchantment", "Basic Attack", "Summon", "Performance", "Form", "Hymn", "Talent", "Revelation", "Affix", "Attunement", "Equipment", "Code"];
             return categories[categoryId] || "Unknown";
         }
 
-        function getTypeName(typeId) {
+        const getTypeName = (typeId) => {
             const types = ["Melee", "Magic", "Ranged", "Utility", "Divine", "Corruption", "Monster"];
             return types[typeId] || "Unknown";
         }
 
-        function getRarityName(rarityId) {
+        const getRarityName = (rarityId) => {
             const rarities = ["Common", "Uncommon", "Rare", "Legendary", "Monster"];
             return rarities[rarityId] || "Unknown";
         }
-
-        function getCostSummary(cost) {
-            const costItems = [];
-            for (const [key, value] of Object.entries(cost)) {
-                if (value > 0) {
-                    costItems.push(`${key} ${value}`);
-                }
-            }
+        
+        const getCostSummary = (cost) => {
+            const costItems = Object.entries(cost)
+                .filter(([_, value]) => value > 0)
+                .map(([key, value]) => `${key} ${value}`);
             return costItems.join(', ') || 'None';
         }
 
-        // Initial fetch
         fetchCards();
     </script>
 </body>
