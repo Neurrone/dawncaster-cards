@@ -120,7 +120,22 @@
                 // Fetch detailed info for each talent
                 const talentDetails = await Promise.all(data.cards.map(fetchTalentDetails));
                 
-                updateDOM(talentDetails, data.card_len);
+                // Get all unique prerequisite IDs
+                const prerequisiteIds = [...new Set(talentDetails.flatMap(talent => talent.prereq || []))];
+                
+                // Fetch prerequisite details
+                const prerequisiteDetails = await Promise.all(prerequisiteIds.map(fetchTalentDetails));
+                
+                // Create a map of prerequisite details for easy lookup
+                const prerequisiteMap = new Map(prerequisiteDetails.map(talent => [talent.id, talent]));
+                
+                // Add prerequisite details to each talent
+                const enhancedTalentDetails = talentDetails.map(talent => ({
+                    ...talent,
+                    prerequisiteDetails: (talent.prereq || []).map(id => prerequisiteMap.get(id))
+                }));
+                
+                updateDOM(enhancedTalentDetails, data.card_len);
             } catch (error) {
                 console.error('Error fetching talents:', error);
                 updateDOM([], 0); // Clear the table
@@ -149,16 +164,11 @@
         const updateDOM = (talents, totalTalents) => {
             const resultsInfo = document.getElementById('resultsInfo');
             resultsInfo.innerHTML = renderTooManyResultsWarningIfNeeded(talents.length, totalTalents);
-            talentTable.innerHTML = talents.length > 0 ? renderTalents(talents) : '<tr><td colspan="4">No talents found.</td></tr>';
+            talentTable.innerHTML = talents.length > 0 ? talents.map(renderTalent).join('') : '<tr><td colspan="4">No talents found.</td></tr>';
         }
 
-        const renderTalents = (talents) => {
-            return talents.map(renderTalent).join('');
-        }
-
-        const renderTalent = async (details) => {
-            const prerequisites = await Promise.all((details.prereq || []).map(fetchTalentDetails));
-            const prerequisiteNames = prerequisites.map(p => p.name).join(', ');
+        const renderTalent = (details) => {
+            const prerequisiteNames = (details.prerequisiteDetails || []).map(p => p.name).join(', ');
             
             return `
                 <tr>
