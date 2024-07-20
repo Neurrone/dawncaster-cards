@@ -246,7 +246,7 @@
             const costItems = Object.entries(cost)
                 .filter(([_, value]) => value > 0)
                 .map(([key, value]) => `${key} ${value}`);
-            return costItems.join(', ') || 'None';
+            return costItems.join(', ');
         }
 
         fetchCards();
