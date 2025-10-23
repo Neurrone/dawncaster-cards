@@ -91,6 +91,8 @@
           <option value="17">Path</option>
           <option value="18">Location</option>
           <option value="19">Offering</option>
+          <option value="20">Mantra</option>
+          <option value="21">Adaptation</option>
         </select>
         <select id="type">
           <option value="">Type</option>
@@ -102,6 +104,7 @@
           <option value="5">Move</option>
           <option value="6">Corruption</option>
           <option value="7">Monster</option>
+          <option value="8"></option>
         </select>
         <select id="rarity">
           <option value="">Rarity</option>
@@ -110,6 +113,9 @@
           <option value="2">Rare</option>
           <option value="3">Legendary</option>
           <option value="4">Monster</option>
+          <option value="5">Epic</option>
+          <option value="6">Mythic</option>
+          <option value="7">Ultra</option>
         </select>
         <select id="banner">
           <option value="">Banner Colour</option>
@@ -136,6 +142,7 @@
           <option value="5">Infinitum</option>
           <option value="6">Catalyst</option>
           <option value="7">Eclypse</option>
+          <option value="8">Synthesis</option>
         </select>
       </search>
       <div role="status" id="resultsInfo"></div>
@@ -283,6 +290,8 @@
           "Path",
           "Location",
           "Offering",
+          "Mantra",
+          "Adaptation",
         ];
         return categories[categoryId] || "Unknown";
       };
@@ -297,12 +306,13 @@
           "Move",
           "Corruption",
           "Monster",
+          "",
         ];
         return types[typeId] || "Unknown";
       };
 
       const getRarityName = (rarityId) => {
-        const rarities = ["Common", "Uncommon", "Rare", "Legendary", "Monster"];
+        const rarities = ["Common", "Uncommon", "Rare", "Legendary", "Monster", "Epic", "Mythic", "Ultra"];
         return rarities[rarityId] || "Unknown";
       };
 
