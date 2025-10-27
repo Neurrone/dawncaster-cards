@@ -144,6 +144,7 @@
           <option value="7">Eclypse</option>
           <option value="8">Synthesis</option>
         </select>
+        <input type="text" id="search" placeholder="Search...">
       </search>
       <div role="status" id="resultsInfo"></div>
       <table id="cardTable">
@@ -167,6 +168,7 @@
         .getElementById("cardTable")
         .getElementsByTagName("tbody")[0];
       const cardCache = new Map(); // Cache for storing card details
+      let searchTimeout = null; // Timeout for debouncing search
 
       const fetchCards = async () => {
         const category = document.getElementById("category").value;
@@ -174,7 +176,8 @@
         const rarity = document.getElementById("rarity").value;
         const banner = document.getElementById("banner").value;
         const expansion = document.getElementById("expansion").value;
-        const url = `https://blightbane.io/api/cards?search=&rarity=${rarity}&category=${category}&type=${type}&banner=${banner}&exp=${expansion}`;
+        const search = document.getElementById("search").value;
+        const url = `https://blightbane.io/api/cards?search=${encodeURIComponent(search)}&rarity=${rarity}&category=${category}&type=${type}&banner=${banner}&exp=${expansion}`;
 
         try {
           const response = await fetch(url);
@@ -202,6 +205,11 @@
 
       document.querySelectorAll("select").forEach((select) => {
         select.addEventListener("change", fetchCards);
+      });
+
+      document.getElementById("search").addEventListener("input", () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(fetchCards, 1000);
       });
 
       const fetchCardDetails = async (card) => {
