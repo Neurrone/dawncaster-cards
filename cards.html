@@ -37,6 +37,15 @@
         gap: 10px;
         margin-bottom: 20px;
       }
+
+      select, input[type="text"] {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: #fff;
+        color: #333;
+        font-size: 14px;
+      }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -62,6 +71,30 @@
         margin: 20px;
         font-size: 18px;
         color: #666;
+      }
+
+      /* Mobile responsiveness */
+      @media (max-width: 768px) {
+        .filters {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        select, input[type="text"] {
+          min-height: 44px;
+          font-size: 16px;
+        }
+
+        #cardTable {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        th, td {
+          font-size: 14px;
+          padding: 6px;
+        }
       }
     </style>
   </head>
@@ -93,15 +126,15 @@
         <input type="text" id="search" placeholder="Search..." />
       </search>
       <div role="status" id="resultsInfo" style="display: none"></div>
-      <table id="cardTable" style="display: none">
+      <table id="cardTable" hidden>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Type</th>
-            <th>Rarity</th>
-            <th>Cost</th>
-            <th>Description</th>
+            <th scope="col">Name</th>
+            <th scope="col">Category</th>
+            <th scope="col">Type</th>
+            <th scope="col">Rarity</th>
+            <th scope="col">Cost</th>
+            <th scope="col">Description</th>
           </tr>
         </thead>
         <tbody>
@@ -136,10 +169,9 @@
           // Hide loading message
           document.getElementById("loading").style.display = "none";
 
-          // Show filters and table
-          document.querySelector(".filters").style.display = "flex";
+          // Show filters (but keep table hidden until there are rows to show)
+          document.querySelector(".filters").style.display = "";
           document.getElementById("resultsInfo").style.display = "block";
-          document.getElementById("cardTable").style.display = "";
 
           // Populate filter dropdowns from database
           populateFilters();
@@ -243,8 +275,9 @@
         // Don't show all cards when no filters are selected
         if (!category && !type && !rarity && !banner && !expansion && !search) {
           const resultsInfo = document.getElementById("resultsInfo");
+          const tableElement = document.getElementById("cardTable");
           resultsInfo.innerHTML = `<p>Please select at least one filter to view cards.</p>`;
-          cardTable.innerHTML = '';
+          tableElement.hidden = true;
           return;
         }
 
@@ -298,7 +331,7 @@
           const results = db.exec(sql, params);
 
           if (results.length === 0) {
-            updateDOM([], 0);
+            updateDOM([]);
             return;
           }
 
@@ -328,26 +361,32 @@
             rarity_name: row[19],
           }));
 
-          updateDOM(cards, cards.length);
+          updateDOM(cards);
         } catch (error) {
           console.error("Error querying database:", error);
-          updateDOM([], 0);
+          updateDOM([]);
           document.getElementById(
             "resultsInfo"
           ).innerHTML = `<p style="color: red;">Error querying database: ${error.message}</p>`;
         }
       };
 
-      const updateDOM = (cards, totalCards) => {
+      const updateDOM = (cards) => {
         const resultsInfo = document.getElementById("resultsInfo");
-        resultsInfo.innerHTML = `<p>Showing ${cards.length} card${
-          cards.length !== 1 ? "s" : ""
-        }</p>`;
+        const tableElement = document.getElementById("cardTable");
 
-        cardTable.innerHTML =
-          cards.length > 0
-            ? renderCards(cards)
-            : '<tr><td colspan="6">No cards found.</td></tr>';
+        if (cards.length > 0) {
+          // Populate tbody first, then show table
+          cardTable.innerHTML = renderCards(cards);
+          tableElement.hidden = false;
+          resultsInfo.innerHTML = `<p>Showing ${cards.length} card${
+            cards.length !== 1 ? "s" : ""
+          }</p>`;
+        } else {
+          // Hide table when no cards
+          tableElement.hidden = true;
+          resultsInfo.innerHTML = `<p>No cards found.</p>`;
+        }
       };
 
       const renderCards = (cards) => {

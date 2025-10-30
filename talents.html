@@ -37,6 +37,15 @@
         gap: 10px;
         margin-bottom: 20px;
       }
+
+      select, input[type="text"] {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: #fff;
+        color: #333;
+        font-size: 14px;
+      }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -62,6 +71,30 @@
         margin: 20px;
         font-size: 18px;
         color: #666;
+      }
+
+      /* Mobile responsiveness */
+      @media (max-width: 768px) {
+        .filters {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        select, input[type="text"] {
+          min-height: 44px;
+          font-size: 16px;
+        }
+
+        #talentTable {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        th, td {
+          font-size: 14px;
+          padding: 6px;
+        }
       }
     </style>
   </head>
@@ -91,13 +124,13 @@
         <input type="text" id="search" placeholder="Search..." />
       </search>
       <div role="status" id="resultsInfo" style="display: none"></div>
-      <table id="talentTable" style="display: none">
+      <table id="talentTable" hidden>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Tier</th>
-            <th>Prerequisites</th>
-            <th>Description</th>
+            <th scope="col">Name</th>
+            <th scope="col">Tier</th>
+            <th scope="col">Prerequisites</th>
+            <th scope="col">Description</th>
           </tr>
         </thead>
         <tbody>
@@ -132,10 +165,9 @@
           // Hide loading message
           document.getElementById("loading").style.display = "none";
 
-          // Show filters and table
-          document.querySelector(".filters").style.display = "flex";
+          // Show filters (but keep table hidden until there are rows to show)
+          document.querySelector(".filters").style.display = "";
           document.getElementById("resultsInfo").style.display = "block";
-          document.getElementById("talentTable").style.display = "";
 
           // Populate expansion dropdown from database
           populateExpansions();
@@ -147,7 +179,7 @@
 
           document.getElementById("search").addEventListener("input", () => {
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(fetchTalents, 1000);
+            searchTimeout = setTimeout(fetchTalents, 300);
           });
 
           // Initial load
@@ -184,11 +216,11 @@
 
         // Build SQL query
         let sql = `
-                SELECT
-                    t.id, t.name, t.tier, t.expansion, t.description_html
-                FROM talents t
-                WHERE 1=1
-            `;
+          SELECT
+            t.id, t.name, t.tier, t.expansion, t.description_html
+          FROM talents t
+          WHERE 1=1
+        `;
 
         const params = {};
 
@@ -202,9 +234,9 @@
         }
         if (search) {
           sql += ` AND (
-                    LOWER(t.name) LIKE $search OR
-                    LOWER(REPLACE(REPLACE(t.description_html, '<br>', ' '), '<br/>', ' ')) LIKE $search
-                )`;
+            LOWER(t.name) LIKE $search OR
+            LOWER(REPLACE(REPLACE(t.description_html, '<br>', ' '), '<br/>', ' ')) LIKE $search
+          )`;
           params["$search"] = `%${search}%`;
         }
 
@@ -231,12 +263,12 @@
           if (talents.length > 0) {
             const talentIds = talents.map((t) => t.id).join(",");
             const prereqSql = `
-                        SELECT tp.talent_id, t.id, t.name
-                        FROM talent_prerequisites tp
-                        JOIN talents t ON tp.prerequisite_id = t.id
-                        WHERE tp.talent_id IN (${talentIds})
-                        ORDER BY tp.talent_id, t.name
-                    `;
+              SELECT tp.talent_id, t.id, t.name
+              FROM talent_prerequisites tp
+              JOIN talents t ON tp.prerequisite_id = t.id
+              WHERE tp.talent_id IN (${talentIds})
+              ORDER BY tp.talent_id, t.name
+            `;
             const prereqResults = db.exec(prereqSql);
 
             // Group prerequisites by talent_id
@@ -266,14 +298,20 @@
 
       const updateDOM = (talents) => {
         const resultsInfo = document.getElementById("resultsInfo");
-        resultsInfo.innerHTML = `<p>Showing ${talents.length} talent${
-          talents.length !== 1 ? "s" : ""
-        }</p>`;
+        const tableElement = document.getElementById("talentTable");
 
-        talentTable.innerHTML =
-          talents.length > 0
-            ? talents.map(renderTalent).join("")
-            : '<tr><td colspan="4">No talents found.</td></tr>';
+        if (talents.length > 0) {
+          // Populate tbody first, then show table
+          talentTable.innerHTML = talents.map(renderTalent).join("");
+          tableElement.hidden = false;
+          resultsInfo.innerHTML = `<p>Showing ${talents.length} talent${
+            talents.length !== 1 ? "s" : ""
+          }</p>`;
+        } else {
+          // Hide table when no talents
+          tableElement.hidden = true;
+          resultsInfo.innerHTML = `<p>No talents found.</p>`;
+        }
       };
 
       const renderTalent = (talent) => {
@@ -282,20 +320,20 @@
           .join(", ");
 
         return `
-                <tr>
-                    <th scope="row">
-                        <a href="https://blightbane.io/talent/${talent.name.replace(
-                          / /g,
-                          "_"
-                        )}">
-                            ${talent.name}
-                        </a>
-                    </th>
-                    <td>${talent.tier}</td>
-                    <td>${prerequisiteNames}</td>
-                    <td>${talent.description}</td>
-                </tr>
-            `;
+          <tr>
+            <th scope="row">
+              <a href="https://blightbane.io/talent/${talent.name.replace(
+                / /g,
+                "_"
+              )}">
+                ${talent.name}
+              </a>
+            </th>
+            <td>${talent.tier}</td>
+            <td>${prerequisiteNames}</td>
+            <td>${talent.description}</td>
+          </tr>
+        `;
       };
 
       // Initialize on page load
