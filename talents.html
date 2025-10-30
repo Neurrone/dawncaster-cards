@@ -1,206 +1,305 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dawncaster Talents</title>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.0.12/purify.min.js" async></script>
+    <script
+      type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"
+    ></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
+      body {
+        font-family: Arial, sans-serif;
+      }
 
-        nav ul {
-            list-style-type: none;
-            padding: 0;
-            margin: 0 0 20px 0;
-            display: flex;
-            background-color: #f2f2f2;
-        }
-        nav li {
-            padding: 10px 20px;
-        }
-        nav a {
-            text-decoration: none;
-            color: black;
-        }
-        nav a[aria-current="page"] {
-            font-weight: bold;
-            border-bottom: 2px solid #000;
-        }        
+      nav ul {
+        list-style-type: none;
+        padding: 0;
+        margin: 0 0 20px 0;
+        display: flex;
+        background-color: #f2f2f2;
+      }
+      nav li {
+        padding: 10px 20px;
+      }
+      nav a {
+        text-decoration: none;
+        color: black;
+      }
+      nav a[aria-current="page"] {
+        font-weight: bold;
+        border-bottom: 2px solid #000;
+      }
 
-        .filters {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        #resultsInfo {
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-        th[scope="row"] {
-            font-weight: bold;
-            background-color: #e9e9e9;
-        }
+      .filters {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      #resultsInfo {
+        margin-bottom: 10px;
+        font-weight: bold;
+      }
+      th[scope="row"] {
+        font-weight: bold;
+        background-color: #e9e9e9;
+      }
+      #loading {
+        margin: 20px;
+        font-size: 18px;
+        color: #666;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <nav>
-        <ul>
-            <li><a href="cards.html">Cards</a></li>
-            <li><a href="#" aria-current="page">Talents</a></li>
-        </ul>
+      <ul>
+        <li><a href="cards.html">Cards</a></li>
+        <li><a href="#" aria-current="page">Talents</a></li>
+      </ul>
     </nav>
     <main>
-        <search class="filters">
-            <select id="tier">
-                <option value="">Talent Tier</option>
-                <option value="0">Tier 0</option>
-                <option value="1">Tier 1</option>
-                <option value="2">Tier 2</option>
-                <option value="3">Tier 3</option>
-                <option value="4">Tier 4</option>
-                <option value="5">Tier 5</option>
-                <option value="6">Tier 6</option>
-            </select>
-            <select id="expansion">
-                <option value="">Expansion</option>
-                <option value="0">None</option>
-                <option value="1">Core</option>
-                <option value="2">Metaprogress</option>
-                <option value="3">Metamorphosis</option>
-                <option value="4">Core Extended</option>
-                <option value="5">Infinitum</option>
-                <option value="6">Catalyst</option>
-                <option value="7">Eclypse</option>
-                <option value="8">Synthesis</option>
-            </select>
-            <input type="text" id="search" placeholder="Search...">
-        </search>
-        <div role="status" id="resultsInfo"></div>
-        <table id="talentTable">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Tier</th>
-                    <th>Prerequisites</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Table rows will be populated here -->
-            </tbody>
-        </table>
+      <div id="loading">Loading database...</div>
+      <search class="filters" style="display: none">
+        <select id="tier">
+          <option value="">Talent Tier</option>
+          <option value="0">Tier 0</option>
+          <option value="1">Tier 1</option>
+          <option value="2">Tier 2</option>
+          <option value="3">Tier 3</option>
+          <option value="4">Tier 4</option>
+          <option value="5">Tier 5</option>
+          <option value="6">Tier 6</option>
+        </select>
+        <select id="expansion">
+          <option value="">Expansion</option>
+        </select>
+        <input type="text" id="search" placeholder="Search..." />
+      </search>
+      <div role="status" id="resultsInfo" style="display: none"></div>
+      <table id="talentTable" style="display: none">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Tier</th>
+            <th>Prerequisites</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Table rows will be populated here -->
+        </tbody>
+      </table>
     </main>
     <script>
-        const talentTable = document.getElementById('talentTable').getElementsByTagName('tbody')[0];
-        const talentCache = new Map(); // Cache for storing talent details
-        let searchTimeout = null; // Timeout for debouncing search
+      let db = null;
+      const talentTable = document
+        .getElementById("talentTable")
+        .getElementsByTagName("tbody")[0];
+      let searchTimeout = null;
 
-        const fetchTalents = async () => {
-            const tier = document.getElementById('tier').value;
-            const expansion = document.getElementById('expansion').value;
-            const search = document.getElementById('search').value;
-            const url = `https://blightbane.io/api/cards?search=${encodeURIComponent(search)}&rarity=${tier}&category=10&type=&banner=&exp=${expansion}`;
+      // Initialize database
+      const initDB = async () => {
+        try {
+          // Wait for sql.js to load
+          const SQL = await initSqlJs({
+            locateFile: (file) =>
+              `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`,
+          });
 
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`While searching for talents: ${response.status} ${response.body}`);
-                }
-                const data = await response.json();
-                
-                // Fetch detailed info for each talent
-                const talentDetails = await Promise.all(data.cards.map(talent => fetchTalentDetails(talent.id)));
-                
-                // Get all unique prerequisite IDs
-                const prerequisiteIds = [...new Set(talentDetails.flatMap(talent => talent.prereq || []))];
-                // Fetch prerequisite details
-                const prerequisiteDetails = await Promise.all(prerequisiteIds.map(fetchTalentDetails));
-                
-                // Create a map of prerequisite details for easy lookup
-                const prerequisiteMap = new Map(prerequisiteDetails.map(talent => [talent.id, talent]));
-                
-                // Add prerequisite details to each talent
-                const enhancedTalentDetails = talentDetails.map(talent => ({
-                    ...talent,
-                    prerequisiteDetails: (talent.prereq || []).map(id => prerequisiteMap.get(id))
-                }));
-                
-                updateDOM(enhancedTalentDetails, data.card_len);
-            } catch (error) {
-                console.error('Error fetching talents:', error);
-                updateDOM([], 0); // Clear the table
-                document.getElementById('resultsInfo').innerHTML = `<p>Error fetching talents: ${error.message}</p>`;
-            }
-        }
+          // Load database file
+          const response = await fetch("dawncaster-cards.db");
+          if (!response.ok) {
+            throw new Error("Failed to load database file");
+          }
+          const buffer = await response.arrayBuffer();
+          db = new SQL.Database(new Uint8Array(buffer));
 
-        document.querySelectorAll('select').forEach(select => {
-            select.addEventListener('change', fetchTalents);
-        });
+          // Hide loading message
+          document.getElementById("loading").style.display = "none";
 
-        document.getElementById('search').addEventListener('input', () => {
+          // Show filters and table
+          document.querySelector(".filters").style.display = "flex";
+          document.getElementById("resultsInfo").style.display = "block";
+          document.getElementById("talentTable").style.display = "";
+
+          // Populate expansion dropdown from database
+          populateExpansions();
+
+          // Add event listeners
+          document.querySelectorAll("select").forEach((select) => {
+            select.addEventListener("change", fetchTalents);
+          });
+
+          document.getElementById("search").addEventListener("input", () => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(fetchTalents, 1000);
-        });
+          });
 
-        const fetchTalentDetails = async (talentId) => {
-            if (talentCache.has(talentId)) {
-                return talentCache.get(talentId);
-            } else {
-                const response = await fetch(`https://blightbane.io/api/card/${talentId}?talent=true`);
-                if (!response.ok) {
-                    throw new Error(`Error while fetching talent details: ${response}`);
-                }
-                const details = await response.json();
-                talentCache.set(talentId, details);
-                return details;
+          // Initial load
+          fetchTalents();
+        } catch (error) {
+          console.error("Error initializing database:", error);
+          document.getElementById(
+            "loading"
+          ).innerHTML = `<p style="color: red;">Error loading database: ${error.message}</p>`;
+        }
+      };
+
+      const populateExpansions = () => {
+        const expansions = db.exec(
+          "SELECT id, name FROM expansions ORDER BY id"
+        );
+        const expansionSelect = document.getElementById("expansion");
+        if (expansions[0]) {
+          expansions[0].values.forEach(([id, name]) => {
+            const option = document.createElement("option");
+            option.value = id;
+            option.textContent = name;
+            expansionSelect.appendChild(option);
+          });
+        }
+      };
+
+      const fetchTalents = () => {
+        if (!db) return;
+
+        const tier = document.getElementById("tier").value;
+        const expansion = document.getElementById("expansion").value;
+        const search = document.getElementById("search").value.toLowerCase();
+
+        // Build SQL query
+        let sql = `
+                SELECT
+                    t.id, t.name, t.tier, t.expansion, t.description_html
+                FROM talents t
+                WHERE 1=1
+            `;
+
+        const params = {};
+
+        if (tier) {
+          sql += ` AND t.tier = $tier`;
+          params["$tier"] = parseInt(tier);
+        }
+        if (expansion) {
+          sql += ` AND t.expansion = $expansion`;
+          params["$expansion"] = parseInt(expansion);
+        }
+        if (search) {
+          sql += ` AND (
+                    LOWER(t.name) LIKE $search OR
+                    LOWER(REPLACE(REPLACE(t.description_html, '<br>', ' '), '<br/>', ' ')) LIKE $search
+                )`;
+          params["$search"] = `%${search}%`;
+        }
+
+        sql += ` ORDER BY t.name`;
+
+        try {
+          const results = db.exec(sql, params);
+
+          if (results.length === 0) {
+            updateDOM([]);
+            return;
+          }
+
+          // Convert results to talent objects
+          const talents = results[0].values.map((row) => ({
+            id: row[0],
+            name: row[1],
+            tier: row[2],
+            expansion: row[3],
+            description: row[4],
+          }));
+
+          // Fetch all prerequisites in a single query
+          if (talents.length > 0) {
+            const talentIds = talents.map((t) => t.id).join(",");
+            const prereqSql = `
+                        SELECT tp.talent_id, t.id, t.name
+                        FROM talent_prerequisites tp
+                        JOIN talents t ON tp.prerequisite_id = t.id
+                        WHERE tp.talent_id IN (${talentIds})
+                        ORDER BY tp.talent_id, t.name
+                    `;
+            const prereqResults = db.exec(prereqSql);
+
+            // Group prerequisites by talent_id
+            const prereqsByTalent = {};
+            if (prereqResults.length > 0) {
+              prereqResults[0].values.forEach(([talentId, prereqId, prereqName]) => {
+                if (!prereqsByTalent[talentId]) prereqsByTalent[talentId] = [];
+                prereqsByTalent[talentId].push({ id: prereqId, name: prereqName });
+              });
             }
-        }
 
-        const updateDOM = (talents, totalTalents) => {
-            const resultsInfo = document.getElementById('resultsInfo');
-            resultsInfo.innerHTML = renderTooManyResultsWarningIfNeeded(talents.length, totalTalents);
-            talentTable.innerHTML = talents.length > 0 ? talents.map(renderTalent).join('') : '<tr><td colspan="4">No talents found.</td></tr>';
-        }
+            // Assign prerequisites to talents
+            talents.forEach((talent) => {
+              talent.prerequisites = prereqsByTalent[talent.id] || [];
+            });
+          }
 
-        const renderTalent = (details) => {
-            const prerequisiteNames = (details.prerequisiteDetails || []).map(p => p.name).join(', ');
-            
-            return `
+          updateDOM(talents);
+        } catch (error) {
+          console.error("Error querying database:", error);
+          updateDOM([]);
+          document.getElementById(
+            "resultsInfo"
+          ).innerHTML = `<p style="color: red;">Error querying database: ${error.message}</p>`;
+        }
+      };
+
+      const updateDOM = (talents) => {
+        const resultsInfo = document.getElementById("resultsInfo");
+        resultsInfo.innerHTML = `<p>Showing ${talents.length} talent${
+          talents.length !== 1 ? "s" : ""
+        }</p>`;
+
+        talentTable.innerHTML =
+          talents.length > 0
+            ? talents.map(renderTalent).join("")
+            : '<tr><td colspan="4">No talents found.</td></tr>';
+      };
+
+      const renderTalent = (talent) => {
+        const prerequisiteNames = talent.prerequisites
+          .map((p) => p.name)
+          .join(", ");
+
+        return `
                 <tr>
                     <th scope="row">
-                        <a href="https://blightbane.io/talent/${details.name.replace(/ /g, '_')}">
-                            ${details.name}
+                        <a href="https://blightbane.io/talent/${talent.name.replace(
+                          / /g,
+                          "_"
+                        )}">
+                            ${talent.name}
                         </a>
                     </th>
-                    <td>${details.tier}</td>
+                    <td>${talent.tier}</td>
                     <td>${prerequisiteNames}</td>
-                    <td>${DOMPurify.sanitize(details.description, {ALLOWED_TAGS: []})}</td>
+                    <td>${talent.description}</td>
                 </tr>
             `;
-        }
+      };
 
-        const renderTooManyResultsWarningIfNeeded = (displayedTalents, totalTalents) => {
-            if (displayedTalents < totalTalents) {
-                return `<p>${displayedTalents} talents out of ${totalTalents} displayed. Filter to reduce the number of results.</p>`;
-            }
-            return '';
-        }
-
-        fetchTalents();
+      // Initialize on page load
+      initDB();
     </script>
-</body>
+  </body>
 </html>

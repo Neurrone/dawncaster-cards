@@ -6,8 +6,7 @@
     <title>Dawncaster Cards</title>
     <script
       type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.0.12/purify.min.js"
-      async
+      src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"
     ></script>
     <style>
       body {
@@ -59,6 +58,11 @@
         font-weight: bold;
         background-color: #e9e9e9;
       }
+      #loading {
+        margin: 20px;
+        font-size: 18px;
+        color: #666;
+      }
     </style>
   </head>
   <body>
@@ -69,85 +73,27 @@
       </ul>
     </nav>
     <main>
-      <search class="filters">
+      <div id="loading">Loading database...</div>
+      <search class="filters" style="display: none">
         <select id="category">
           <option value="">Category</option>
-          <option value="0">Action</option>
-          <option value="1">Item</option>
-          <option value="2">Artifact</option>
-          <option value="3">Conjuration</option>
-          <option value="4">Enchantment</option>
-          <option value="5">Basic Attack</option>
-          <option value="6">Summon</option>
-          <option value="7">Performance</option>
-          <option value="8">Form</option>
-          <option value="9">Hymn</option>
-          <option value="11">Revelation</option>
-          <option value="12">Affix</option>
-          <option value="13">Attunement</option>
-          <option value="14">Equipment</option>
-          <option value="15">Code</option>
-          <option value="16">Ingredient</option>
-          <option value="17">Path</option>
-          <option value="18">Location</option>
-          <option value="19">Offering</option>
-          <option value="20">Mantra</option>
-          <option value="21">Adaptation</option>
         </select>
         <select id="type">
           <option value="">Type</option>
-          <option value="0">Melee</option>
-          <option value="1">Magic</option>
-          <option value="2">Ranged</option>
-          <option value="3">Utility</option>
-          <option value="4">Divine</option>
-          <option value="5">Move</option>
-          <option value="6">Corruption</option>
-          <option value="7">Monster</option>
-          <option value="8"></option>
         </select>
         <select id="rarity">
           <option value="">Rarity</option>
-          <option value="0">Common</option>
-          <option value="1">Uncommon</option>
-          <option value="2">Rare</option>
-          <option value="3">Legendary</option>
-          <option value="4">Monster</option>
-          <option value="5">Epic</option>
-          <option value="6">Mythic</option>
-          <option value="7">Ultra</option>
         </select>
         <select id="banner">
           <option value="">Banner Colour</option>
-          <option value="0">None</option>
-          <option value="1">Green</option>
-          <option value="2">Blue</option>
-          <option value="3">Red</option>
-          <option value="4">Purple</option>
-          <option value="5">Brown</option>
-          <option value="6">Aqua</option>
-          <option value="7">White</option>
-          <option value="8">Gold</option>
-          <option value="9">Black</option>
-          <option value="10">Orange</option>
-          <option value="11">Monster</option>
         </select>
         <select id="expansion">
           <option value="">Expansion</option>
-          <option value="0">None</option>
-          <option value="1">Core</option>
-          <option value="2">Metaprogress</option>
-          <option value="3">Metamorphosis</option>
-          <option value="4">Core Extended</option>
-          <option value="5">Infinitum</option>
-          <option value="6">Catalyst</option>
-          <option value="7">Eclypse</option>
-          <option value="8">Synthesis</option>
         </select>
-        <input type="text" id="search" placeholder="Search...">
+        <input type="text" id="search" placeholder="Search..." />
       </search>
-      <div role="status" id="resultsInfo"></div>
-      <table id="cardTable">
+      <div role="status" id="resultsInfo" style="display: none"></div>
+      <table id="cardTable" style="display: none">
         <thead>
           <tr>
             <th>Name</th>
@@ -164,76 +110,240 @@
       </table>
     </main>
     <script>
+      let db = null;
       const cardTable = document
         .getElementById("cardTable")
         .getElementsByTagName("tbody")[0];
-      const cardCache = new Map(); // Cache for storing card details
-      let searchTimeout = null; // Timeout for debouncing search
+      let searchTimeout = null;
 
-      const fetchCards = async () => {
+      // Initialize database
+      const initDB = async () => {
+        try {
+          // Wait for sql.js to load
+          const SQL = await initSqlJs({
+            locateFile: (file) =>
+              `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`,
+          });
+
+          // Load database file
+          const response = await fetch("dawncaster-cards.db");
+          if (!response.ok) {
+            throw new Error("Failed to load database file");
+          }
+          const buffer = await response.arrayBuffer();
+          db = new SQL.Database(new Uint8Array(buffer));
+
+          // Hide loading message
+          document.getElementById("loading").style.display = "none";
+
+          // Show filters and table
+          document.querySelector(".filters").style.display = "flex";
+          document.getElementById("resultsInfo").style.display = "block";
+          document.getElementById("cardTable").style.display = "";
+
+          // Populate filter dropdowns from database
+          populateFilters();
+
+          // Add event listeners
+          document.querySelectorAll("select").forEach((select) => {
+            select.addEventListener("change", fetchCards);
+          });
+
+          document.getElementById("search").addEventListener("input", () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(fetchCards, 300);
+          });
+
+          // Initial load
+          fetchCards();
+        } catch (error) {
+          console.error("Error initializing database:", error);
+          document.getElementById(
+            "loading"
+          ).innerHTML = `<p style="color: red;">Error loading database: ${error.message}</p>`;
+        }
+      };
+
+      const populateFilters = () => {
+        // Populate categories
+        const categories = db.exec(
+          "SELECT id, name FROM categories ORDER BY id"
+        );
+        const categorySelect = document.getElementById("category");
+        if (categories[0]) {
+          categories[0].values.forEach(([id, name]) => {
+            const option = document.createElement("option");
+            option.value = id;
+            option.textContent = name;
+            categorySelect.appendChild(option);
+          });
+        }
+
+        // Populate types
+        const types = db.exec("SELECT id, name FROM types ORDER BY id");
+        const typeSelect = document.getElementById("type");
+        if (types[0]) {
+          types[0].values.forEach(([id, name]) => {
+            const option = document.createElement("option");
+            option.value = id;
+            option.textContent = name || "(None)";
+            typeSelect.appendChild(option);
+          });
+        }
+
+        // Populate rarities
+        const rarities = db.exec("SELECT id, name FROM rarities ORDER BY id");
+        const raritySelect = document.getElementById("rarity");
+        if (rarities[0]) {
+          rarities[0].values.forEach(([id, name]) => {
+            const option = document.createElement("option");
+            option.value = id;
+            option.textContent = name;
+            raritySelect.appendChild(option);
+          });
+        }
+
+        // Populate colors
+        const colors = db.exec("SELECT id, name FROM colors ORDER BY id");
+        const bannerSelect = document.getElementById("banner");
+        if (colors[0]) {
+          colors[0].values.forEach(([id, name]) => {
+            const option = document.createElement("option");
+            option.value = id;
+            option.textContent = name;
+            bannerSelect.appendChild(option);
+          });
+        }
+
+        // Populate expansions
+        const expansions = db.exec(
+          "SELECT id, name FROM expansions ORDER BY id"
+        );
+        const expansionSelect = document.getElementById("expansion");
+        if (expansions[0]) {
+          expansions[0].values.forEach(([id, name]) => {
+            const option = document.createElement("option");
+            option.value = id;
+            option.textContent = name;
+            expansionSelect.appendChild(option);
+          });
+        }
+      };
+
+      const fetchCards = () => {
+        if (!db) return;
+
         const category = document.getElementById("category").value;
         const type = document.getElementById("type").value;
         const rarity = document.getElementById("rarity").value;
         const banner = document.getElementById("banner").value;
         const expansion = document.getElementById("expansion").value;
-        const search = document.getElementById("search").value;
-        const url = `https://blightbane.io/api/cards?search=${encodeURIComponent(search)}&rarity=${rarity}&category=${category}&type=${type}&banner=${banner}&exp=${expansion}`;
+        const search = document.getElementById("search").value.toLowerCase();
+
+        // Don't show all cards when no filters are selected
+        if (!category && !type && !rarity && !banner && !expansion && !search) {
+          const resultsInfo = document.getElementById("resultsInfo");
+          resultsInfo.innerHTML = `<p>Please select at least one filter to view cards.</p>`;
+          cardTable.innerHTML = '';
+          return;
+        }
+
+        // Build SQL query
+        let sql = `
+          SELECT
+            c.id, c.name, c.category, c.type, c.rarity, c.expansion, c.color, c.description_html,
+            co.dex, co.int, co.str, co.holy, co.neutral, co.dexint, co.dexstr, co.intstr, co.blood,
+            cat.name as category_name, t.name as type_name, r.name as rarity_name
+          FROM cards c
+          JOIN costs co ON c.id = co.card_id
+          JOIN categories cat ON c.category = cat.id
+          JOIN types t ON c.type = t.id
+          JOIN rarities r ON c.rarity = r.id
+          WHERE 1=1
+        `;
+
+        const params = {};
+
+        if (category) {
+          sql += ` AND c.category = $category`;
+          params["$category"] = parseInt(category);
+        }
+        if (type) {
+          sql += ` AND c.type = $type`;
+          params["$type"] = parseInt(type);
+        }
+        if (rarity) {
+          sql += ` AND c.rarity = $rarity`;
+          params["$rarity"] = parseInt(rarity);
+        }
+        if (banner) {
+          sql += ` AND c.color = $banner`;
+          params["$banner"] = parseInt(banner);
+        }
+        if (expansion) {
+          sql += ` AND c.expansion = $expansion`;
+          params["$expansion"] = parseInt(expansion);
+        }
+        if (search) {
+          sql += ` AND (
+            LOWER(c.name) LIKE $search OR
+            LOWER(REPLACE(REPLACE(c.description_html, '<br>', ' '), '<br/>', ' ')) LIKE $search
+          )`;
+          params["$search"] = `%${search}%`;
+        }
+
+        sql += ` ORDER BY c.name`;
 
         try {
-          const response = await fetch(url);
-          if (!response.ok) {
-            throw new Error(
-              `While searching for cards: ${response.status} ${response.body}`
-            );
+          const results = db.exec(sql, params);
+
+          if (results.length === 0) {
+            updateDOM([], 0);
+            return;
           }
-          const data = await response.json();
 
-          // Fetch detailed info for each card
-          const cardDetails = await Promise.all(
-            data.cards.map(fetchCardDetails)
-          );
+          // Convert results to card objects
+          const cards = results[0].values.map((row) => ({
+            id: row[0],
+            name: row[1],
+            category: row[2],
+            type: row[3],
+            rarity: row[4],
+            expansion: row[5],
+            color: row[6],
+            description: row[7],
+            cost: {
+              dex: row[8],
+              int: row[9],
+              str: row[10],
+              holy: row[11],
+              neutral: row[12],
+              dexint: row[13],
+              dexstr: row[14],
+              intstr: row[15],
+              blood: row[16],
+            },
+            category_name: row[17],
+            type_name: row[18],
+            rarity_name: row[19],
+          }));
 
-          updateDOM(cardDetails, data.card_len);
+          updateDOM(cards, cards.length);
         } catch (error) {
-          console.error("Error fetching cards:", error);
-          updateDOM([], 0); // Clear the table
+          console.error("Error querying database:", error);
+          updateDOM([], 0);
           document.getElementById(
             "resultsInfo"
-          ).innerHTML = `<p>Error fetching cards: ${error.message}</p>`;
-        }
-      };
-
-      document.querySelectorAll("select").forEach((select) => {
-        select.addEventListener("change", fetchCards);
-      });
-
-      document.getElementById("search").addEventListener("input", () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(fetchCards, 1000);
-      });
-
-      const fetchCardDetails = async (card) => {
-        if (cardCache.has(card.id)) {
-          return cardCache.get(card.id);
-        } else {
-          const response = await fetch(
-            `https://blightbane.io/api/card/${card.id}`
-          );
-          if (!response.ok) {
-            throw new Error(`Error while fetching card details: ${response}`);
-          }
-          const details = await response.json();
-          cardCache.set(card.id, details);
-          return details;
+          ).innerHTML = `<p style="color: red;">Error querying database: ${error.message}</p>`;
         }
       };
 
       const updateDOM = (cards, totalCards) => {
         const resultsInfo = document.getElementById("resultsInfo");
-        resultsInfo.innerHTML = renderTooManyResultsWarningIfNeeded(
-          cards.length,
-          totalCards
-        );
+        resultsInfo.innerHTML = `<p>Showing ${cards.length} card${
+          cards.length !== 1 ? "s" : ""
+        }</p>`;
+
         cardTable.innerHTML =
           cards.length > 0
             ? renderCards(cards)
@@ -244,84 +354,24 @@
         return cards.map(renderCard).join("");
       };
 
-      const renderCard = (details) => {
+      const renderCard = (card) => {
         return `
-                <tr>
-                    <th scope="row">
-                        <a href="https://blightbane.io/card/${details.name.replace(
-                          / /g,
-                          "_"
-                        )}">
-                            ${details.name}
-                        </a>
-                    </th>
-                    <td>${getCategoryName(details.category)}</td>
-                    <td>${getTypeName(details.type)}</td>
-                    <td>${getRarityName(details.rarity)}</td>
-                    <td>${getCostSummary(details.cost)}</td>
-                    <td>${DOMPurify.sanitize(details.description, {
-                      ALLOWED_TAGS: [],
-                    })}</td>
-                </tr>
-            `;
-      };
-
-      const renderTooManyResultsWarningIfNeeded = (
-        displayedCards,
-        totalCards
-      ) => {
-        if (displayedCards < totalCards) {
-          return `<p>${displayedCards} cards out of ${totalCards} displayed. Filter to reduce the number of results.</p>`;
-        }
-        return "";
-      };
-
-      const getCategoryName = (categoryId) => {
-        const categories = [
-          "Action",
-          "Item",
-          "Artifact",
-          "Conjuration",
-          "Enchantment",
-          "Basic Attack",
-          "Summon",
-          "Performance",
-          "Form",
-          "Hymn",
-          "Talent",
-          "Revelation",
-          "Affix",
-          "Attunement",
-          "Equipment",
-          "Code",
-          "Ingredient",
-          "Path",
-          "Location",
-          "Offering",
-          "Mantra",
-          "Adaptation",
-        ];
-        return categories[categoryId] || "Unknown";
-      };
-
-      const getTypeName = (typeId) => {
-        const types = [
-          "Melee",
-          "Magic",
-          "Ranged",
-          "Utility",
-          "Divine",
-          "Move",
-          "Corruption",
-          "Monster",
-          "",
-        ];
-        return types[typeId] || "Unknown";
-      };
-
-      const getRarityName = (rarityId) => {
-        const rarities = ["Common", "Uncommon", "Rare", "Legendary", "Monster", "Epic", "Mythic", "Ultra"];
-        return rarities[rarityId] || "Unknown";
+          <tr>
+            <th scope="row">
+              <a href="https://blightbane.io/card/${card.name.replace(
+                / /g,
+                "_"
+              )}">
+                ${card.name}
+              </a>
+            </th>
+            <td>${card.category_name}</td>
+            <td>${card.type_name}</td>
+            <td>${card.rarity_name}</td>
+            <td>${getCostSummary(card.cost)}</td>
+            <td>${card.description}</td>
+          </tr>
+        `;
       };
 
       const getCostSummary = (cost) => {
@@ -331,7 +381,8 @@
         return costItems.join(", ");
       };
 
-      fetchCards();
+      // Initialize on page load
+      initDB();
     </script>
   </body>
 </html>
