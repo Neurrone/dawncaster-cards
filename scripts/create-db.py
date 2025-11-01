@@ -17,7 +17,7 @@ import json
 
 def get_bundle_version():
     """Get the current bundle version from Blightbane homepage."""
-    print("Fetching bundle version from Blightbane...", flush=True)
+    print("Fetching bundle version from Blightbane...")
     with urlopen('https://blightbane.io') as response:
         html = response.read().decode('utf-8')
 
@@ -27,7 +27,7 @@ def get_bundle_version():
         raise Exception("Could not find bundle version in Blightbane homepage")
 
     version = match.group(1)
-    print(f"  Found bundle version: {version}", flush=True)
+    print(f"  Found bundle version: {version}")
     return version
 
 
@@ -64,16 +64,16 @@ def fetch_with_retry(url, max_retries=3, base_delay=1.0):
             if e.code in (502, 503, 504):
                 if attempt < max_retries - 1:
                     delay = base_delay * (2 ** attempt)  # Exponential backoff
-                    print(f"  HTTP {e.code} error, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})", flush=True)
+                    print(f"  HTTP {e.code} error, retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
                     time.sleep(delay)
                     continue
                 else:
-                    print(f"  HTTP {e.code} error, max retries exceeded", flush=True)
+                    print(f"  HTTP {e.code} error, max retries exceeded")
             raise
         except URLError as e:
             if attempt < max_retries - 1:
                 delay = base_delay * (2 ** attempt)
-                print(f"  Network error ({e.reason}), retrying in {delay}s... (attempt {attempt + 1}/{max_retries})", flush=True)
+                print(f"  Network error ({e.reason}), retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
                 time.sleep(delay)
                 continue
             raise
@@ -87,11 +87,11 @@ def fetch_filter_data_from_bundle():
 
     # Fetch bundle
     bundle_url = f"https://blightbane.io/js/index.bundle.js?v={version}"
-    print(f"Fetching bundle from {bundle_url}...", flush=True)
+    print(f"Fetching bundle from {bundle_url}...")
     with urlopen(bundle_url) as response:
         bundle_js = response.read().decode('utf-8')
 
-    print("Extracting filter arrays from bundle...", flush=True)
+    print("Extracting filter arrays from bundle...")
 
     # Extract each filter array using patterns from the skill
     filters = {}
@@ -136,7 +136,7 @@ def fetch_filter_data_from_bundle():
 
 def create_database(db_path):
     """Create fresh database with schema."""
-    print(f"Creating database: {db_path}", flush=True)
+    print(f"Creating database: {db_path}")
 
     conn = sqlite3.connect(db_path)
 
@@ -235,7 +235,7 @@ def create_database(db_path):
 
 def populate_lookup_tables(conn):
     """Populate lookup tables from Blightbane bundle."""
-    print("\nPopulating lookup tables...", flush=True)
+    print("\nPopulating lookup tables...")
 
     # Fetch all filter data from bundle
     filters = fetch_filter_data_from_bundle()
@@ -273,7 +273,7 @@ def populate_lookup_tables(conn):
 
 def collect_card_ids(conn):
     """Collect all unique card IDs by querying all rarity/color combinations."""
-    print("\nCollecting card IDs from all rarity/color combinations...", flush=True)
+    print("\nCollecting card IDs from all rarity/color combinations...")
 
     # Get all rarities and colors from database
     rarities = [row[0] for row in conn.execute("SELECT id FROM rarities ORDER BY id")]
@@ -308,7 +308,7 @@ def collect_card_ids(conn):
                     if cards:  # Only print if cards were found
                         print(f"  [{query_count}/{total_queries}] Rarity {rarity}, Color {color}: {len(cards)} cards")
             except Exception as e:
-                print(f"  ERROR querying rarity={rarity}, color={color}: {e}", flush=True)
+                print(f"  ERROR querying rarity={rarity}, color={color}: {e}")
 
     print(f"\nFound {len(card_ids)} unique cards total")
     return sorted(card_ids)
@@ -316,7 +316,7 @@ def collect_card_ids(conn):
 
 def collect_talent_ids(conn):
     """Collect all unique talent IDs by querying all tier/expansion combinations."""
-    print("\nCollecting talent IDs from all tier/expansion combinations...", flush=True)
+    print("\nCollecting talent IDs from all tier/expansion combinations...")
 
     # Get all expansions from database
     expansions = [row[0] for row in conn.execute("SELECT id FROM expansions ORDER BY id")]
@@ -325,7 +325,7 @@ def collect_talent_ids(conn):
     tiers = list(range(7))  # 0, 1, 2, 3, 4, 5, 6
 
     total_queries = len(tiers) * len(expansions)
-    print(f"  Will query {len(tiers)} tiers × {len(expansions)} expansions = {total_queries} combinations", flush=True)
+    print(f"  Will query {len(tiers)} tiers × {len(expansions)} expansions = {total_queries} combinations")
 
     talent_ids = set()
     query_count = 0
@@ -352,11 +352,11 @@ def collect_talent_ids(conn):
                         talent_ids.add(talent['id'])
 
                     if talents:  # Only print if talents were found
-                        print(f"  [{query_count}/{total_queries}] Tier {tier}, Expansion {expansion}: {len(talents)} talents", flush=True)
+                        print(f"  [{query_count}/{total_queries}] Tier {tier}, Expansion {expansion}: {len(talents)} talents")
             except Exception as e:
-                print(f"  ERROR querying tier={tier}, expansion={expansion}: {e}", flush=True)
+                print(f"  ERROR querying tier={tier}, expansion={expansion}: {e}")
 
-    print(f"\nFound {len(talent_ids)} unique talents total", flush=True)
+    print(f"\nFound {len(talent_ids)} unique talents total")
     return sorted(talent_ids)
 
 
@@ -384,13 +384,13 @@ def fetch_and_store_talent(conn, talent_id, index, total):
         ))
 
         if (index + 1) % 10 == 0 or (index + 1) == total:
-            print(f"  Progress: {index + 1}/{total} talents", flush=True)
+            print(f"  Progress: {index + 1}/{total} talents")
 
         # Return prerequisites for later insertion
         return (True, talent.get('prereq', []))
 
     except Exception as e:
-        print(f"  ERROR fetching talent {talent_id}: {e}", flush=True)
+        print(f"  ERROR fetching talent {talent_id}: {e}")
         return (False, [])
 
 
@@ -439,18 +439,18 @@ def fetch_and_store_card(conn, card_id, index, total):
         ))
 
         if (index + 1) % 10 == 0 or (index + 1) == total:
-            print(f"  Progress: {index + 1}/{total} cards", flush=True)
+            print(f"  Progress: {index + 1}/{total} cards")
 
         return True
 
     except Exception as e:
-        print(f"  ERROR fetching card {card_id}: {e}", flush=True)
+        print(f"  ERROR fetching card {card_id}: {e}")
         return False
 
 
 def prune_unused_filters(conn):
     """Remove filter values that do not correspond to any cards."""
-    print("\nPruning unused filter values...", flush=True)
+    print("\nPruning unused filter values...")
 
     removed_any = False
     for table_name, column_name in (
@@ -496,21 +496,21 @@ def prune_unused_filters(conn):
             )
 
     if not removed_any:
-        print("  No unused filter values found", flush=True)
+        print("  No unused filter values found")
 
     conn.commit()
 
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: uv run create-db/run.py <output_database.db>", flush=True)
+        print("Usage: uv run create-db/run.py <output_database.db>")
         sys.exit(1)
 
     db_path = sys.argv[1]
 
-    print("="*60, flush=True)
-    print("Dawncaster Cards Database Builder", flush=True)
-    print("="*60, flush=True)
+    print("="*60)
+    print("Dawncaster Cards Database Builder")
+    print("="*60)
 
     # Create database
     conn = create_database(db_path)
@@ -521,7 +521,7 @@ def main():
     # Collect and fetch talents FIRST
     talent_ids = collect_talent_ids(conn)
 
-    print(f"\nFetching talent details (0.5s delay between requests)...", flush=True)
+    print(f"\nFetching talent details (0.25s delay between requests)...")
     talent_success_count = 0
     talent_prerequisites = {}  # Store prerequisites for second pass
 
@@ -535,7 +535,7 @@ def main():
         conn.commit()  # Commit after each talent
 
     # Second pass: Insert all talent prerequisites now that all talents exist
-    print(f"\nInserting talent prerequisites...", flush=True)
+    print(f"\nInserting talent prerequisites...")
     prereq_count = 0
     for talent_id, prereqs in talent_prerequisites.items():
         for prereq_id in prereqs:
@@ -546,14 +546,14 @@ def main():
                 """, (talent_id, prereq_id))
                 prereq_count += 1
             except Exception as e:
-                print(f"  WARNING: Could not insert prerequisite {prereq_id} for talent {talent_id}: {e}", flush=True)
+                print(f"  WARNING: Could not insert prerequisite {prereq_id} for talent {talent_id}: {e}")
     conn.commit()
-    print(f"  Inserted {prereq_count} prerequisite relationships", flush=True)
+    print(f"  Inserted {prereq_count} prerequisite relationships")
 
     # Collect and fetch cards
     card_ids = collect_card_ids(conn)
 
-    print(f"\nFetching card details (0.5s delay between requests)...", flush=True)
+    print(f"\nFetching card details (0.25s delay between requests)...")
     card_success_count = 0
 
     for i, card_id in enumerate(card_ids):
@@ -565,13 +565,13 @@ def main():
     prune_unused_filters(conn)
 
     # Summary
-    print("\n" + "="*60, flush=True)
-    print(f"COMPLETE:", flush=True)
-    print(f"  Talents: {talent_success_count}/{len(talent_ids)} inserted", flush=True)
-    print(f"  Talent Prerequisites: {prereq_count} relationships inserted", flush=True)
-    print(f"  Cards: {card_success_count}/{len(card_ids)} inserted", flush=True)
-    print(f"Database: {db_path}", flush=True)
-    print("="*60, flush=True)
+    print("\n" + "="*60)
+    print(f"COMPLETE:")
+    print(f"  Talents: {talent_success_count}/{len(talent_ids)} inserted")
+    print(f"  Talent Prerequisites: {prereq_count} relationships inserted")
+    print(f"  Cards: {card_success_count}/{len(card_ids)} inserted")
+    print(f"Database: {db_path}")
+    print("="*60)
 
     conn.close()
 
