@@ -4,99 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dawncaster Talents</title>
+    <link rel="stylesheet" href="common.css" />
     <script
       type="text/javascript"
       src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"
     ></script>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-      }
-
-      nav ul {
-        list-style-type: none;
-        padding: 0;
-        margin: 0 0 20px 0;
-        display: flex;
-        background-color: #f2f2f2;
-      }
-      nav li {
-        padding: 10px 20px;
-      }
-      nav a {
-        text-decoration: none;
-        color: black;
-      }
-      nav a[aria-current="page"] {
-        font-weight: bold;
-        border-bottom: 2px solid #000;
-      }
-
-      .filters {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-      }
-
-      select, input[type="text"] {
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        background-color: #fff;
-        color: #333;
-        font-size: 14px;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      th,
-      td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
-      }
-      th {
-        background-color: #f2f2f2;
-      }
-      #resultsInfo {
-        margin-bottom: 10px;
-        font-weight: bold;
-      }
-      th[scope="row"] {
-        font-weight: bold;
-        background-color: #e9e9e9;
-      }
-      #loading {
-        margin: 20px;
-        font-size: 18px;
-        color: #666;
-      }
-
-      /* Mobile responsiveness */
-      @media (max-width: 768px) {
-        .filters {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-        }
-
-        select, input[type="text"] {
-          min-height: 44px;
-          font-size: 16px;
-        }
-
-        #talentTable {
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-        }
-
-        th, td {
-          font-size: 14px;
-          padding: 6px;
-        }
-      }
-    </style>
   </head>
   <body>
     <nav>
@@ -124,71 +36,57 @@
         <input type="text" id="search" placeholder="Search..." />
       </search>
       <div role="status" id="resultsInfo" style="display: none"></div>
-      <table id="talentTable" hidden>
-        <thead>
-          <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Tier</th>
-            <th scope="col">Prerequisites</th>
-            <th scope="col">Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Table rows will be populated here -->
-        </tbody>
-      </table>
+      <div id="talentTableContainer" class="table-container" hidden>
+        <table id="talentTable" class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Tier</th>
+              <th scope="col">Prerequisites</th>
+              <th scope="col">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Table rows will be populated here -->
+          </tbody>
+        </table>
+      </div>
     </main>
-    <script>
+    <script type="module">
+      import {
+        attachFilterListeners,
+        finalizeLoading,
+        handleInitializationError,
+        loadSqlDatabase,
+        setupDebouncedInput,
+      } from "./common.js";
+
       let db = null;
-      const talentTable = document
+      const talentTableBody = document
         .getElementById("talentTable")
         .getElementsByTagName("tbody")[0];
-      let searchTimeout = null;
+      const talentTableContainer = document.getElementById(
+        "talentTableContainer"
+      );
 
       // Initialize database
       const initDB = async () => {
         try {
-          // Wait for sql.js to load
-          const SQL = await initSqlJs({
-            locateFile: (file) =>
-              `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`,
-          });
-
-          // Load database file
-          const response = await fetch("dawncaster-cards.db");
-          if (!response.ok) {
-            throw new Error("Failed to load database file");
-          }
-          const buffer = await response.arrayBuffer();
-          db = new SQL.Database(new Uint8Array(buffer));
-
-          // Hide loading message
-          document.getElementById("loading").style.display = "none";
-
-          // Show filters (but keep table hidden until there are rows to show)
-          document.querySelector(".filters").style.display = "";
-          document.getElementById("resultsInfo").style.display = "block";
+          db = await loadSqlDatabase();
+          finalizeLoading();
 
           // Populate expansion dropdown from database
           populateExpansions();
 
           // Add event listeners
-          document.querySelectorAll("select").forEach((select) => {
-            select.addEventListener("change", fetchTalents);
-          });
+          attachFilterListeners(".filters select", fetchTalents);
 
-          document.getElementById("search").addEventListener("input", () => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(fetchTalents, 300);
-          });
+          setupDebouncedInput("#search", fetchTalents);
 
           // Initial load
           fetchTalents();
         } catch (error) {
-          console.error("Error initializing database:", error);
-          document.getElementById(
-            "loading"
-          ).innerHTML = `<p style="color: red;">Error loading database: ${error.message}</p>`;
+          handleInitializationError("loading", error);
         }
       };
 
@@ -292,24 +190,23 @@
           updateDOM([]);
           document.getElementById(
             "resultsInfo"
-          ).innerHTML = `<p style="color: red;">Error querying database: ${error.message}</p>`;
+          ).innerHTML = `<p class="error">Error querying database: ${error.message}</p>`;
         }
       };
 
       const updateDOM = (talents) => {
         const resultsInfo = document.getElementById("resultsInfo");
-        const tableElement = document.getElementById("talentTable");
 
         if (talents.length > 0) {
           // Populate tbody first, then show table
-          talentTable.innerHTML = talents.map(renderTalent).join("");
-          tableElement.hidden = false;
+          talentTableBody.innerHTML = talents.map(renderTalent).join("");
+          talentTableContainer.hidden = false;
           resultsInfo.innerHTML = `<p>Showing ${talents.length} talent${
             talents.length !== 1 ? "s" : ""
           }</p>`;
         } else {
           // Hide table when no talents
-          tableElement.hidden = true;
+          talentTableContainer.hidden = true;
           resultsInfo.innerHTML = `<p>No talents found.</p>`;
         }
       };
