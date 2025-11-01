@@ -448,6 +448,59 @@ def fetch_and_store_card(conn, card_id, index, total):
         return False
 
 
+def prune_unused_filters(conn):
+    """Remove filter values that do not correspond to any cards."""
+    print("\nPruning unused filter values...", flush=True)
+
+    removed_any = False
+    for table_name, column_name in (
+        ("types", "type"),
+        ("rarities", "rarity"),
+        ("colors", "color"),
+    ):
+        removed_count = 0
+        rows = list(
+            conn.execute(
+                f"""
+                SELECT
+                    lookup.id,
+                    lookup.name,
+                    COUNT(cards.id) AS card_count
+                FROM {table_name} AS lookup
+                LEFT JOIN cards ON cards.{column_name} = lookup.id
+                GROUP BY lookup.id, lookup.name
+                ORDER BY lookup.id
+                """
+            )
+        )
+
+        unused_ids = [identifier for identifier, _, count in rows if count == 0]
+
+        if unused_ids:
+            conn.executemany(
+                f"DELETE FROM {table_name} WHERE id = ?",
+                ((identifier,) for identifier in unused_ids),
+            )
+            removed_count = len(unused_ids)
+
+        if removed_count:
+            removed_any = True
+            print(
+                f"  Removed {removed_count} {table_name} entries with no associated cards",
+                flush=True,
+            )
+        else:
+            print(
+                f"  All {table_name} values are used by at least one card",
+                flush=True,
+            )
+
+    if not removed_any:
+        print("  No unused filter values found", flush=True)
+
+    conn.commit()
+
+
 def main():
     if len(sys.argv) != 2:
         print("Usage: uv run create-db/run.py <output_database.db>", flush=True)
@@ -508,6 +561,8 @@ def main():
             card_success_count += 1
         time.sleep(0.25)  # Rate limiting
         conn.commit()  # Commit after each card
+
+    prune_unused_filters(conn)
 
     # Summary
     print("\n" + "="*60, flush=True)
