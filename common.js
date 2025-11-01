@@ -17,7 +17,8 @@
         `https://cdnjs.cloudflare.com/ajax/libs/sql.js/${sqlJsVersion}/${file}`,
     });
 
-    const response = await fetch(dbPath);
+    // Bypass browser caching so each page load sees the latest generated SQLite DB.
+    const response = await fetch(dbPath, { cache: "no-store" });
     if (!response.ok) {
       throw new Error("Failed to load database file");
     }
