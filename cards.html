@@ -71,10 +71,7 @@
 
           populateFilters();
 
-          dawncasterCommon.attachFilterListeners(
-            ".filters select",
-            fetchCards
-          );
+          dawncasterCommon.attachFilterListeners(".filters select", fetchCards);
           dawncasterCommon.setupDebouncedInput("#search", fetchCards);
 
           fetchCards();
