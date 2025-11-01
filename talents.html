@@ -9,7 +9,6 @@
       type="text/javascript"
       src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"
     ></script>
-    <script src="common.js"></script>
   </head>
   <body>
     <nav>
@@ -53,7 +52,15 @@
         </table>
       </div>
     </main>
-    <script>
+    <script type="module">
+      import {
+        attachFilterListeners,
+        finalizeLoading,
+        handleInitializationError,
+        loadSqlDatabase,
+        setupDebouncedInput,
+      } from "./common.js";
+
       let db = null;
       const talentTableBody = document
         .getElementById("talentTable")
@@ -65,24 +72,21 @@
       // Initialize database
       const initDB = async () => {
         try {
-          db = await dawncasterCommon.loadSqlDatabase();
-          dawncasterCommon.finalizeLoading();
+          db = await loadSqlDatabase();
+          finalizeLoading();
 
           // Populate expansion dropdown from database
           populateExpansions();
 
           // Add event listeners
-          dawncasterCommon.attachFilterListeners(
-            ".filters select",
-            fetchTalents
-          );
+          attachFilterListeners(".filters select", fetchTalents);
 
-          dawncasterCommon.setupDebouncedInput("#search", fetchTalents);
+          setupDebouncedInput("#search", fetchTalents);
 
           // Initial load
           fetchTalents();
         } catch (error) {
-          dawncasterCommon.handleInitializationError("loading", error);
+          handleInitializationError("loading", error);
         }
       };
 
