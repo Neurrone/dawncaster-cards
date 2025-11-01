@@ -4,6 +4,8 @@
 
 Dawncaster is a mobile rogue-like card game similar to Slay The Spire. This is a static website that provides an alternative interface for browsing Dawncaster game data from the Blightbane API.
 
+The site should follow best practices from the Web Content Accessibility Guidelines and be responsive for ease of use on small screens.
+
 The site consists of two main pages:
 
 - `cards.html` - Browse and filter game cards, alternate interface for https://blightbane.io/cards
@@ -96,9 +98,8 @@ The Blightbane website is a client-side JavaScript application. The raw HTML doe
 
 - Array index corresponds to the API filter value (e.g., "Rare" is at index 2, so use `?rarity=2`)
 - Some filters prepend "None" at index 0 (banners/colors and expansions)
-- This is the same approach used by `scripts/create-db.py` to populate the database
 
-### Local Database Approach
+## Local Database Approach
 
 The html files have JavaScript which queries an SQLite database. The database needs to be generated ahead of time by crawling the API.
 
@@ -108,15 +109,13 @@ The `create-db/run.py` script builds a complete SQLite database from the Blightb
 python run create-db/run.py dawncaster-cards.db
 ```
 
-**What it does:**
-
 1. Fetches filter values from Blightbane JavaScript bundle (always up-to-date)
 2. Queries all 96 rarity/color combinations to collect all card IDs
 3. Fetches detailed info for each card with 0.5s rate limiting (respects API)
 4. Sanitizes HTML descriptions (keeps `<br>` tags, strips everything else)
 5. FetchesDoes something similar to fetch all talents5. Stores everything in SQLite with STRICT tables and foreign key enforcement
 
-**Database contains:**
+Database contains:
 
 - ~1,672 cards
 - Lookup tables: categories, types, rarities, expansions, colors
@@ -124,7 +123,7 @@ python run create-db/run.py dawncaster-cards.db
 - Costs table with resource breakdowns
 - Talents
 
-### Functional Programming Style
+## Functional Programming Style
 
 The code follows a functional approach with:
 
