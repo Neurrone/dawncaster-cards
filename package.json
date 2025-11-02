@@ -1,0 +1,12 @@
+{
+  "name": "dawncaster-cards",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/serve-static.cjs",
+    "test": "bash -lc 'server_sid=\"\"; cleanup(){ if [ -n \"$server_sid\" ]; then kill -- -\"$server_sid\" 2>/dev/null || true; wait \"$server_sid\" 2>/dev/null || true; fi; }; trap cleanup EXIT INT TERM HUP; setsid node scripts/serve-static.cjs >/tmp/dawncaster-test-server.log 2>&1 & server_sid=$!; for i in {1..40}; do curl --silent --head --fail http://127.0.0.1:4173/cards.html >/dev/null && break; sleep 0.25; done; curl --silent --head --fail http://127.0.0.1:4173/cards.html >/dev/null || { echo \"Server failed to start\" >&2; exit 1; }; npx playwright test'",
+    "test:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

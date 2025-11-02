@@ -133,8 +133,8 @@ The code follows a functional approach with:
 
 ## Development
 
-### Running Locally
+Install dependencies with `npm i`, only used for running tests.
 
-Start a web server, `python -m http.server`.
+`npm run start` to start a development server, then open a web browser and go to http://127.0.0.1:4173/cards.html
 
-Then go to `http://localhost:8000/cards.html` or `talents.html`
+To run Playwright tests: `npm run test`. Note: this command also runs the development server
