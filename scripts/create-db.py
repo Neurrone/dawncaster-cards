@@ -2,7 +2,7 @@
 """
 Build Dawncaster cards database from Blightbane API.
 
-Usage: uv run create-db/run.py <output_database.db>
+Usage: python run create-db/run.py <output_database.db>
 """
 
 import sqlite3
@@ -13,7 +13,6 @@ from urllib.request import urlopen
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
 import json
-
 
 def get_bundle_version():
     """Get the current bundle version from Blightbane homepage."""
@@ -454,7 +453,7 @@ def prune_unused_filters(conn):
 
     removed_any = False
     for table_name, column_name in (
-        ("types", "type"),
+        ("categories", "category"),
         ("rarities", "rarity"),
         ("colors", "color"),
     ):
@@ -487,23 +486,13 @@ def prune_unused_filters(conn):
             removed_any = True
             print(
                 f"  Removed {removed_count} {table_name} entries with no associated cards",
-                flush=True,
             )
-        else:
-            print(
-                f"  All {table_name} values are used by at least one card",
-                flush=True,
-            )
-
-    if not removed_any:
-        print("  No unused filter values found")
-
+    
     conn.commit()
-
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: uv run create-db/run.py <output_database.db>")
+        print("Usage: python create-db/run.py <output_database.db>")
         sys.exit(1)
 
     db_path = sys.argv[1]
@@ -518,13 +507,10 @@ def main():
     # Populate lookup tables
     populate_lookup_tables(conn)
 
-    # Collect and fetch talents FIRST
     talent_ids = collect_talent_ids(conn)
-
     print(f"\nFetching talent details (0.25s delay between requests)...")
     talent_success_count = 0
     talent_prerequisites = {}  # Store prerequisites for second pass
-
     for i, talent_id in enumerate(talent_ids):
         success, prereqs = fetch_and_store_talent(conn, talent_id, i, len(talent_ids))
         if success:
@@ -552,10 +538,8 @@ def main():
 
     # Collect and fetch cards
     card_ids = collect_card_ids(conn)
-
     print(f"\nFetching card details (0.25s delay between requests)...")
     card_success_count = 0
-
     for i, card_id in enumerate(card_ids):
         if fetch_and_store_card(conn, card_id, i, len(card_ids)):
             card_success_count += 1
@@ -574,7 +558,6 @@ def main():
     print("="*60)
 
     conn.close()
-
 
 if __name__ == '__main__':
     main()
