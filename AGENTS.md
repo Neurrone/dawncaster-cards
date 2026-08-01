@@ -103,17 +103,18 @@ The Blightbane website is a client-side JavaScript application. The raw HTML doe
 
 The html files have JavaScript which queries an SQLite database. The database needs to be generated ahead of time by crawling the API.
 
-The `create-db/run.py` script builds a complete SQLite database from the Blightbane API:
+The `scripts/create-db.py` script builds a complete SQLite database from the Blightbane API:
 
 ```bash
-python run create-db/run.py dawncaster-cards.db
+python3 scripts/create-db.py dawncaster-cards.db
 ```
 
 1. Fetches filter values from Blightbane JavaScript bundle (always up-to-date)
 2. Queries all 96 rarity/color combinations to collect all card IDs
 3. Fetches detailed info for each card with 0.5s rate limiting (respects API)
 4. Sanitizes HTML descriptions (keeps `<br>` tags, strips everything else)
-5. FetchesDoes something similar to fetch all talents5. Stores everything in SQLite with STRICT tables and foreign key enforcement
+5. Does something similar to fetch all talents
+6. Stores everything in SQLite with STRICT tables and foreign key enforcement
 
 Database contains:
 
